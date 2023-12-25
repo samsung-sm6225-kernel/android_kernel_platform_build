@@ -70,6 +70,7 @@
 set -e
 
 function abl_image_generate() {
+  set -x
   PREBUILT_HOST_TOOLS="BUILD_CC=clang BUILD_CXX=clang++ LDPATH=-fuse-ld=lld BUILD_AR=llvm-ar"
 
   MKABL_ARGS=("-C" "${ROOT_DIR}/${ABL_SRC}")
@@ -78,7 +79,7 @@ function abl_image_generate() {
   MKABL_ARGS+=("${MAKE_FLAGS[@]}")
   MKABL_ARGS+=("CLANG_BIN=${ROOT_DIR}/${CLANG_PREBUILT_BIN}/")
 
-  set -x
+  #set -x
   make "${MKABL_ARGS[@]}"
   set +x
 
@@ -127,7 +128,7 @@ fi
 
 if [ ! -e "${ROOT_DIR}/${ABL_SRC}" ]; then
   echo "*** STOP *** Please check the edk2 path: ${ROOT_DIR}/${ABL_SRC}"
-  exit 1
+  exit 0
 fi
 
 if [ -n "${1}" ]; then

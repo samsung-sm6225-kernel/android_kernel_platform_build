@@ -41,4 +41,13 @@ set +x
 
 [[ -n "$(find ${3} -type f -name '*.dtb')" ]] && cat ${3}/*.dtb > ${3}/dtb.img
 [[ -n "$(find ${3} -type f -name '*.dtbo')" ]] && mkdtboimg.py create ${3}/dtbo.img --page_size=${PAGE_SIZE} ${3}/*.dtbo
+
+# SS : make final reverse dt ($3=device/qcom/bengal-kernel/dtbs)
+FILES=$(find ${3} -type f -name "*.dtb*")
+
+for FILE in ${FILES}; do
+  REVERSE_NAME=$(basename ${FILE}).reverse.dts
+  dtc -O dts -I dtb -o ${3}/${REVERSE_NAME} ${FILE}
+done
+
 exit 0

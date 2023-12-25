@@ -375,6 +375,8 @@ function build_vendor_dlkm() {
   create_modules_staging "${VENDOR_DLKM_MODULES_LIST}" "${MODULES_STAGING_DIR}" \
     "${VENDOR_DLKM_STAGING_DIR}" "${VENDOR_DLKM_MODULES_BLOCKLIST}"
 
+  chmod u+w -R ${DIST_DIR}/*
+
   local vendor_dlkm_modules_root_dir=$(echo ${VENDOR_DLKM_STAGING_DIR}/lib/modules/*)
   local vendor_dlkm_modules_load=${vendor_dlkm_modules_root_dir}/modules.load
   if [ -f ${vendor_dlkm_modules_root_dir}/modules.blocklist ]; then
@@ -390,6 +392,8 @@ function build_vendor_dlkm() {
   fi
 
   cp ${vendor_dlkm_modules_load} ${DIST_DIR}/vendor_dlkm.modules.load
+
+  chmod u+w -R ${DIST_DIR}/*
 
   if [ -e ${vendor_dlkm_modules_root_dir}/modules.blocklist ]; then
     cp ${vendor_dlkm_modules_root_dir}/modules.blocklist \

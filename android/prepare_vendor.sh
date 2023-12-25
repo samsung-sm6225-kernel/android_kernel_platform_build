@@ -94,6 +94,7 @@ function rel_path() {
 ROOT_DIR=$(realpath $(dirname $(readlink -f $0))/../../..) # build/kernel/android/prepare.sh -> .
 echo "  kernel platform root: $ROOT_DIR"
 
+DEVICE_NAME=${TARGET_PRODUCT}
 ################################################################################
 # Merge vendor devicetree overlays
 
@@ -135,7 +136,12 @@ if [ -z "${ANDROID_KERNEL_OUT}" ]; then
     exit 1
   fi
 
-  ANDROID_KERNEL_OUT=${ANDROID_BUILD_TOP}/device/qcom/${TARGET_BOARD_PLATFORM}-kernel
+  if [ "${DEVICE_NAME}" == "m269" ]; then
+    ANDROID_KERNEL_OUT=${ANDROID_BUILD_TOP}/device/qcom/${DEVICE_NAME}-kernel
+  else 
+    ANDROID_KERNEL_OUT=${ANDROID_BUILD_TOP}/device/qcom/${TARGET_BOARD_PLATFORM}-kernel
+  fi 
+
 fi
 if [ ! -e ${ANDROID_KERNEL_OUT} ]; then
   mkdir -p ${ANDROID_KERNEL_OUT}
@@ -145,7 +151,7 @@ fi
 # Determine requested kernel target and variant
 
 if [ -z "${KERNEL_TARGET}" ]; then
-  KERNEL_TARGET=${1:-${TARGET_BOARD_PLATFORM}}
+  KERNEL_TARGET=${1:-${DEVICE_NAME}}
 fi
 
 if [ -z "${KERNEL_VARIANT}" ]; then
@@ -158,6 +164,9 @@ case "${KERNEL_TARGET}" in
     ;;
   crow)
     KERNEL_TARGET="kalama"
+    ;;
+  bengal_515)
+    KERNEL_TARGET="bengal"
     ;;
 esac
 
@@ -261,20 +270,20 @@ KP_DELIVERS_ABL=$(
 
 
 ################################################################################
-if [ "${RECOMPILE_ABL}" == "1" -a "${KP_DELIVERS_ABL}" == "1"  -a -n \
-   "${TARGET_BUILD_VARIANT}" ]; then
-  echo
-  echo "  Recompiling edk2"
+#if [ "${RECOMPILE_ABL}" == "1" -a "${KP_DELIVERS_ABL}" == "1"  -a -n \
+#   "${TARGET_BUILD_VARIANT}" ]; then
+#  echo
+#  echo "  Recompiling edk2"
 
-  (
-    cd ${ROOT_DIR}
-    ABL_OUT_DIR=${ANDROID_KP_OUT_DIR} \
-    ABL_IMAGE_DIR=${ANDROID_KP_OUT_DIR}/dist \
-    ./build/build_abl.sh ${KERNEL_TARGET}
-  )
+#  (
+#    cd ${ROOT_DIR}
+#    ABL_OUT_DIR=${ANDROID_KP_OUT_DIR} \
+#    ABL_IMAGE_DIR=${ANDROID_KP_OUT_DIR}/dist \
+#    ./build/build_abl.sh ${KERNEL_TARGET}
+#  )
 
-  COPY_ABL_NEEDED=1
-fi
+#  COPY_ABL_NEEDED=1
+#fi
 
 ################################################################################
 if [ "${COPY_NEEDED}" == "1" ]; then
@@ -385,22 +394,22 @@ fi
 
 
 ################################################################################
-if [ "${COPY_ABL_NEEDED}" == "1" ]; then
-  ABL_BUILD_VARIANT=("${TARGET_BUILD_VARIANT}")
-  [ -z "${ABL_BUILD_VARIANT}" ] && ABL_BUILD_VARIANT=("userdebug" "user")
-  for variant in "${ABL_BUILD_VARIANT[@]}"
-  do
-    for file in LinuxLoader_${variant}.debug unsigned_abl_${variant}.elf ; do
-      if [ -e ${ANDROID_KP_OUT_DIR}/dist/${file} ]; then
-        if [ ! -e "${ANDROID_ABL_OUT_DIR}/abl-${variant}" ]; then
-          mkdir -p ${ANDROID_ABL_OUT_DIR}/abl-${variant}
-        fi
-        FILE_NAME=$(echo ${file} | sed 's/_'${variant}'//g')
-        cp ${ANDROID_KP_OUT_DIR}/dist/${file} ${ANDROID_ABL_OUT_DIR}/abl-${variant}/${FILE_NAME}
-      fi
-    done
-  done
-fi
+#if [ "${COPY_ABL_NEEDED}" == "1" ]; then
+#  ABL_BUILD_VARIANT=("${TARGET_BUILD_VARIANT}")
+#  [ -z "${ABL_BUILD_VARIANT}" ] && ABL_BUILD_VARIANT=("userdebug" "user")
+#  for variant in "${ABL_BUILD_VARIANT[@]}"
+#  do
+#    for file in LinuxLoader_${variant}.debug unsigned_abl_${variant}.elf ; do
+#      if [ -e ${ANDROID_KP_OUT_DIR}/dist/${file} ]; then
+#        if [ ! -e "${ANDROID_ABL_OUT_DIR}/abl-${variant}" ]; then
+#          mkdir -p ${ANDROID_ABL_OUT_DIR}/abl-${variant}
+#        fi
+#        FILE_NAME=$(echo ${file} | sed 's/_'${variant}'//g')
+#        cp ${ANDROID_KP_OUT_DIR}/dist/${file} ${ANDROID_ABL_OUT_DIR}/abl-${variant}/${FILE_NAME}
+#      fi
+#    done
+#  done
+#fi
 
 ################################################################################
 

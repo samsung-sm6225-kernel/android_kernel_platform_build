@@ -895,6 +895,68 @@ if [ "${DO_NOT_STRIP_MODULES}" != "1" ]; then
   MODULE_STRIP_FLAG="INSTALL_MOD_STRIP=1"
 fi
 
+KL_DIR=${OUT_DIR##*/}
+if [[ "${KL_DIR}" == "common" ]] && [[ "${KMI_SYMBOL_LIST_STRICT_MODE}" = "1" ]] && [[ "${SEC_BUILD_OPTION_KUNIT}" != "true" ]]; then
+  echo "========================================================"
+  echo " Creating ABI dump"
+  
+  ABI_LINUX_TREE=${DIST_DIR}
+  ABI_VMLINUX_PATH="--vmlinux ${OUT_DIR}/vmlinux"
+  
+  id=${SEC_BUILD_OPTION_BUILD_NUMBER}
+  abi_out_file=abi-${id}.xml
+  full_abi_out_file=abi-full-${id}.xml
+  ${ROOT_DIR}/build/abi/dump_abi                \
+      --linux-tree ${ABI_LINUX_TREE}            \
+      ${ABI_VMLINUX_PATH}                       \
+      --out-file ${DIST_DIR}/${full_abi_out_file}
+  if [ "$KMI_SYMBOL_LIST_FLAG" ]; then
+    ${ROOT_DIR}/build/abi/filter_abi               \
+        --in-file ${DIST_DIR}/${full_abi_out_file} \
+        --out-file ${DIST_DIR}/${abi_out_file}     \
+        $KMI_SYMBOL_LIST_FLAG
+  else
+    cp ${DIST_DIR}/${full_abi_out_file} ${DIST_DIR}/${abi_out_file}
+  fi
+  
+  effective_kernel_dir=$(readlink -f ${ROOT_DIR}/${KERNEL_DIR})
+  for f in "$abi_out_file" "$full_abi_out_file"; do
+    # sanitize the abi.xml by removing any occurrences of the kernel path
+    # and also do that with any left over paths sneaking in
+    # (e.g. from the prebuilts)
+    sed -i -e "s#${effective_kernel_dir}/##g"   \
+           -e "s#${ROOT_DIR}/${KERNEL_DIR}/##g" \
+           -e "s#${ROOT_DIR}/##g" "$DIST_DIR/$f"
+    # Append debug information to abi file
+    echo "
+  <!--
+       libabigail: $(abidw --version)
+  -->" >> ${DIST_DIR}/$f
+  done
+  
+  ln -sf ${abi_out_file} ${DIST_DIR}/abi.xml
+  ln -sf ${full_abi_out_file} ${DIST_DIR}/abi-full.xml
+  echo "========================================================"
+  echo " ABI dump has been created at ${DIST_DIR}/${abi_out_file}"
+  echo " Full ABI dump has been created at ${DIST_DIR}/${full_abi_out_file}"
+  
+  if [ -n "$ABI_DEFINITION" ]; then
+    echo "========================================================"
+    echo " Comparing ABI against expected definition ($ABI_DEFINITION)"
+    set +e
+    ${ROOT_DIR}/build/abi/diff_abi --abi-tool delegated                   \
+                                   --baseline $KERNEL_DIR/$ABI_DEFINITION \
+                                   --new      ${DIST_DIR}/${abi_out_file} \
+                                   --report   ${DIST_DIR}/abi.report
+    set -e
+    t_changed=`cat ${DIST_DIR}/abi.report | grep -E "CRC changed from 0x[0-9a-fAF]{8} to 0x[0-9a-fAF]{8}" | wc -l`
+    if [ $t_changed -ne 0 ]; then
+      echo "ERROR: DIFF_ABI is failed" >&2
+      exit 1
+    fi
+  fi
+fi
+
 if [ "${BUILD_INITRAMFS}" = "1" -o  -n "${IN_KERNEL_MODULES}" ]; then
   echo "========================================================"
   echo " Installing kernel modules into staging directory"
@@ -1062,6 +1124,7 @@ fi
 if [ -n "${GKI_DIST_DIR}" ]; then
   echo "========================================================"
   echo " Copying files from GKI kernel"
+  chmod -R u+w ${DIST_DIR}/
   cp -rv ${GKI_DIST_DIR}/* ${DIST_DIR}/
 fi
 
